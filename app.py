@@ -66,13 +66,6 @@ def display_dataset(uploded_file):
    
 
 #Page------------------------------------------------------------
-img = Image.open("image.jpg")
-
-
-import streamlit as st
-
-# Define some CSS to set the background image
-import streamlit as st
 
 # Define some CSS to set the background image
 page_bg_img = '''
@@ -83,18 +76,14 @@ background-size: cover;
 }
 </style>
 '''
-
 # Add the custom CSS to the page
 st.markdown(page_bg_img, unsafe_allow_html=True)
-
 # Add some content to the page
 st.title('Clustering Test Application \n')
 st.header('Welcome , ')
 
-
 df = display_dataset(uploded_file)
 if df is not None:
-
   st.write(df)
   st.write(df.dtypes)
   st.write("Pre-Processing phase :")
