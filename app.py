@@ -61,9 +61,8 @@ def display_dataset(uploded_file):
      df = pd.read_csv(uploded_file)
      return df
    else :
-     df = None
-     text = st.markdown("<h5 style='text-align: left ; margin-top:5em ; color: red;'>No dataset selected</h1>", unsafe_allow_html=True)
-     return text
+     st.markdown("<h5 style='text-align: left ; margin-top:5em ; color: red;'>No dataset selected</h1>", unsafe_allow_html=True)
+     return None
    
 
 #Page------------------------------------------------------------
@@ -95,7 +94,7 @@ st.header('Welcome , ')
 
 df = display_dataset(uploded_file)
 if df is not None:
-  st.write("The dataset : ")
+
   st.write(df)
   st.write(df.dtypes)
   st.write("Pre-Processing phase :")
