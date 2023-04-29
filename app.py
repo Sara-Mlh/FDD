@@ -1,4 +1,5 @@
 import streamlit as st 
+from PIL import Image
 import pandas as pd 
 import seaborn as sns
 import numpy as np
@@ -25,22 +26,80 @@ def preprocessing(data):
     data = scaler.fit_transform(data)
 
     return data
+
+
          
          
 
-uploded_file = st.file_uploader("Upload a file ",type="csv")
+#sideBar---------------------------------------------------------
 
-#display data 
+with st.sidebar:
+    #File uploader
+    uploded_file = st.file_uploader("Upload a file ",type="csv")
+    #SelectBox for Dataset
+    add_selectbox = st.selectbox(
+    "Select a dataSet :",
+    ("Breast Cancer","Colic","Diabetes", "Drug200","hepatitis")
+    )
+    #Radio for clustering method
+    add_radio = st.radio(
+    "Choose a Clustering method",
+    ("K-Means", "K-Medoids","Agnes","Diana"),
+    index = 0,)
+    #Submit buttom
+    button_color = 'color:blue'  # red
+    button_style = f'background-color: {button_color};'
+    submit = st.button("Starts")
+
+
+
+#display data---------------------------------------------------
 def display_dataset(uploded_file):
    if uploded_file is not None :
      df = pd.read_csv(uploded_file)
      return df
    else :
      return "No dataset selected"
+   
+
+#Page------------------------------------------------------------
+img = Image.open("image.jpg")
+
+
+import streamlit as st
+
+# Define some CSS to set the background image
+import streamlit as st
+
+# Define some CSS to set the background image
+page_bg_img = '''
+<style>
+body {
+background-image: url("https://cdn.pixabay.com/photo/2021/09/03/16/59/fisherman-6600665_1280.jpg");
+background-size: cover;
+}
+</style>
+'''
+
+# Add the custom CSS to the page
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
+# Add some content to the page
+st.write('Hello, world!')
+
+
+# Add the custom CSS to the page
+st.markdown(page_bg_img, unsafe_allow_html=True)
+
+# Add some content to the page
+st.write('Hello, world!')
+
+st.title("It's summer!")
+st.sidebar.header("Configuration")
 
 df = display_dataset(uploded_file)
 st.write(df)
-if df is not None :
+if type(df)is not str:
     st.write("Pre-Processing phase :")
     st.write(df.dtypes)
     st.write(preprocessing(df))
@@ -48,14 +107,6 @@ if df is not None :
 
 
 
-add_selectbox = st.sidebar.selectbox(
-    "How would you like to be contacted?",
-    ("Email", "Home phone", "Mobile phone")
-)
-with st.sidebar:
-      add_radio = st.radio(
-        "Choose a shipping method",
-        ("Standard (5-15 days)", "Express (2-5 days)")
-    )
+
 
 
