@@ -49,7 +49,9 @@ with st.sidebar:
     #Submit buttom
     button_color = 'color:blue'  # red
     button_style = f'background-color: {button_color};'
-    submit = st.button("Starts")
+
+
+    submit = st.button("Start Test")
 
 
 
@@ -59,7 +61,9 @@ def display_dataset(uploded_file):
      df = pd.read_csv(uploded_file)
      return df
    else :
-     return "No dataset selected"
+     df = None
+     text = st.markdown("<h5 style='text-align: left ; margin-top:5em ; color: red;'>No dataset selected</h1>", unsafe_allow_html=True)
+     return text
    
 
 #Page------------------------------------------------------------
@@ -85,25 +89,18 @@ background-size: cover;
 st.markdown(page_bg_img, unsafe_allow_html=True)
 
 # Add some content to the page
-st.write('Hello, world!')
+st.title('Clustering Test Application \n')
+st.header('Welcome , ')
 
-
-# Add the custom CSS to the page
-st.markdown(page_bg_img, unsafe_allow_html=True)
-
-# Add some content to the page
-st.write('Hello, world!')
-
-st.title("It's summer!")
-st.sidebar.header("Configuration")
 
 df = display_dataset(uploded_file)
-st.write(df)
-if type(df)is not str:
-    st.write("Pre-Processing phase :")
-    st.write(df.dtypes)
-    st.write(preprocessing(df))
-    
+if df is not None:
+  st.write("The dataset : ")
+  st.write(df)
+  st.write(df.dtypes)
+  st.write("Pre-Processing phase :")
+  st.write(preprocessing(df))
+  
 
 
 
