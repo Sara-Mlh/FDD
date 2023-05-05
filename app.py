@@ -33,7 +33,7 @@ def preprocessing(data):
     return data
 
 #K_Means---------------------------------------------------------
-def k_Means(data): #data after pre-processing
+def k_Means(data,method): #data after pre-processing
    kmeans_kwargs = {
       "init":"random",
       "n_init": 10 ,
@@ -42,17 +42,18 @@ def k_Means(data): #data after pre-processing
    }
    sse = {}
    for k in range(1,11):
-      k_means = KMeans(n_clusters=k , **kmeans_kwargs) #second prtmr  only random state =1
-      k_means.fit(data)
-      sse[k] = k_means.inertia_
+      if method == "k_means" : 
+        k_means = KMeans(n_clusters=k , **kmeans_kwargs) #second prtmr  only random state =1
+        k_means.fit(data)
+        sse[k] = k_means.inertia_
    return sse 
 
 #Elbow_Method : SSE Curve-----------------------------------------
 def plot_elbow(data):
-   sse = k_Means(data)
+   sse = k_Means(data,"k_means")
    plt.style.use("fivethirtyeight")
    fig = plt.figure()
-   plt.plot(list(sse.keys()),list(sse.values()), 'bx-',linewidth=1.5,color='red')
+   plt.plot(list(sse.keys()),list(sse.values()), 'bx-',linewidth=1.5,color='green')
    #plt.xticks(range(1, 11))
    plt.title("Elbow Method ")
    plt.xlabel("Number of Clusters")
@@ -64,7 +65,7 @@ def plot_elbow(data):
    st.pyplot(fig)
 #The Optimal K number of clusters --------------------------------
 def optimal_K(data): 
-   sse = k_Means(data)
+   sse = k_Means(data,"k_means")
    k=  KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
    return k.elbow
 
@@ -86,20 +87,24 @@ def plot_kmeans(df):
    st.pyplot(fig)
 # Intraclasse calcul --------------------------------------------
 def calculate_intracluster_distance(data, metric='euclidean'):
-    kmeans = KMeans(n_clusters=optimal_K(data))
+    k = optimal_K(data)
+    kmeans = KMeans(n_clusters=k)
     kmeans.fit(data)
+    intra_cluster_distances = np.zeros(k)
     labels = kmeans.labels_
-    sum_dist = 0
-    for i in range(len(set(labels))):
-        sum_dist += pairwise_distances(data[labels == i], metric=metric).sum()
-    return sum_dist
+    centroids = kmeans.cluster_centers_
+    for i in range(k):
+        points_in_cluster = data[labels == i]
+        centroid = centroids[i]
+        intra_cluster_distances[i] = np.mean(pairwise_distances(points_in_cluster, centroid.reshape(1, -1)))
+    return intra_cluster_distances.sum()
 
 # Interclasse calcul --------------------------------------------
 def calculate_intercluster_distance(data, metric='euclidean'):
     kmeans = KMeans(n_clusters=optimal_K(data))
     kmeans.fit(data)
     centroids = kmeans.cluster_centers_
-    return pairwise_distances(centroids, centroids, metric=metric).sum()
+    return pairwise_distances(centroids).sum()
 
 
          
@@ -124,8 +129,7 @@ with st.sidebar:
     button_color = 'color:blue'  # red
     button_style = f'background-color: {button_color};'
     submit = st.button("Start Test")
-#if radio == "K-Means" :
-   #data_header(df)
+
 
     
 
@@ -162,17 +166,19 @@ if dataset is not None:
   st.write("Pre-Processing phase :")
   df = preprocessing(dataset)
   st.write(df)
-  st.write("K-Means :")
-# Call the function to plot the SSE curve
-  #fig = plot_elbow(df)
-# Display the plot in the Streamlit app
-  #st.pyplot(fig)
-# Display the K value 
-  plot_elbow(df)
-  st.write("The optimal K is : ",optimal_K(df))
-  plot_kmeans(df)
-  st.write(" Interclasse :", calculate_intercluster_distance(df))
-  st.write(" Interclasse :", calculate_intracluster_distance(df))
+  if radio == "K-Means" :
+     st.write("K-Means :")
+     # Call the function to plot the SSE curve
+     plot_elbow(df)
+     # Display the K value 
+     st.write("The optimal K is : ",optimal_K(df))
+     plot_kmeans(df)
+     #Display intraclass and interclass values 
+     st.write(" Interclasse :", calculate_intercluster_distance(df))
+     st.write(" Intraclasse :", calculate_intracluster_distance(df))
+  #elif radio == "K-Medoids":
+  #elif radio == "Agnes":
+  #elif radio == "Diana":
   
 
 
