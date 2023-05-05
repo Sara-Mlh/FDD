@@ -116,11 +116,12 @@ def calculate_intercluster_distance(data,method,metric='euclidean'):
 # Agnes test ----------------------------------------------------
 def Agnes_dendogram(data):
    # Compute the linkage matrix
-   dendrogram = sch.dendrogram(sch.linkage(data, method='ward'))
-   fig, ax = plt.subplots(figsize=(10, 5))
+   fig = plt.figure(figsize=(30,20))
+   sch.dendrogram(sch.linkage(data, method='ward'))
    plt.title('Dendrogram')
    plt.xlabel('Cluster Size')
    plt.ylabel('Distance')
+   st.write("Agnes Dendogram :")
    st.pyplot(fig)
 
 
@@ -185,18 +186,18 @@ if dataset is not None:
   df = preprocessing(dataset)
   st.write(df)
   #st.write(radio)
-  if radio != "": #K-Means
+  if radio == "K-Means": #K-Means
     #print("inside k means ")
     st.write(radio,":")
     plot_elbow(df,radio) # Call the function to plot the SSE curve
     st.write("The optimal K is : ",optimal_K(df,radio)) # Display the K value 
-    plot_kmeans(df,radio)
-    if radio == "Agnes" :
-       print("inside agnes")
-       #Agnes_dendogram(df)
+    plot_kmeans(df,radio)    
     #Display intraclass and interclass values 
     st.write(" Interclasse :", calculate_intercluster_distance(df,radio))
     st.write(" Intraclasse :", calculate_intracluster_distance(df,radio))
+  elif radio == "Agnes" :
+       Agnes_dendogram(df)
+
     #elif radio == "K-Medoids":
     #elif radio == "Agnes":
     #elif radio == "Diana":
