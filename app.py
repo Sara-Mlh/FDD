@@ -37,7 +37,7 @@ def preprocessing(data):
 #Elbow method implementation ---------------------------------------------------------
 def elbow(data,method): #data after pre-processing
    kmeans_kwargs = {
-      "init":"random",
+      "init":"k-means++",
       "n_init": 10 ,
       "max_iter" : 300,
       "random_state": 42,
@@ -59,7 +59,7 @@ def elbow(data,method): #data after pre-processing
 def plot_elbow(data,method):
    sse = elbow(data,method)
    plt.style.use("fivethirtyeight")
-   fig = plt.figure()
+   fig = plt.figure(figsize=(10, 5))
    plt.plot(list(sse.keys()),list(sse.values()), 'bx-',linewidth=1.5,color='green')
    plt.title("Elbow Method ")
    plt.xlabel("Number of Clusters")
@@ -87,7 +87,7 @@ def plot_kmeans(df,method):
    k = optimal_K(df,method)
    if method == "K-Means" :
      labels, centroids = perform_kmeans(df,k)
-   fig, ax = plt.subplots()
+   fig, ax = plt.subplots(figsize=(10, 5))
    sns.scatterplot(x=df[:, 0], y=df[:, 1], c=labels, ax=ax)
    sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], marker='x', label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
