@@ -10,6 +10,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from kneed import KneeLocator
 from sklearn.metrics import pairwise_distances
+from sklearn.cluster import AgglomerativeClustering
+import scipy.cluster.hierarchy as sch
 
 
 
@@ -32,42 +34,46 @@ def preprocessing(data):
 
     return data
 
-#K_Means---------------------------------------------------------
-def k_Means(data,method): #data after pre-processing
+#Elbow method implementation ---------------------------------------------------------
+def elbow(data,method): #data after pre-processing
    kmeans_kwargs = {
       "init":"random",
       "n_init": 10 ,
       "max_iter" : 300,
       "random_state": 42,
    }
+
    sse = {}
+   model = None
    for k in range(1,11):
-      if method == "k_means" : 
-        k_means = KMeans(n_clusters=k , **kmeans_kwargs) #second prtmr  only random state =1
-        k_means.fit(data)
-        sse[k] = k_means.inertia_
+      if method == "K-Means" : 
+         model = KMeans(n_clusters=k,**kmeans_kwargs) #second prtmr  only random state =1
+      elif method == "Agnes":
+         model= AgglomerativeClustering(n_clusters=k)
+      if model is not None:
+        model.fit(data)
+        sse[k] = model.inertia_
    return sse 
 
-#Elbow_Method : SSE Curve-----------------------------------------
-def plot_elbow(data):
-   sse = k_Means(data,"k_means")
+#Elbow_Method plot : SSE Curve-----------------------------------------
+def plot_elbow(data,method):
+   sse = elbow(data,method)
    plt.style.use("fivethirtyeight")
    fig = plt.figure()
    plt.plot(list(sse.keys()),list(sse.values()), 'bx-',linewidth=1.5,color='green')
-   #plt.xticks(range(1, 11))
    plt.title("Elbow Method ")
    plt.xlabel("Number of Clusters")
    plt.ylabel("SSE")
-   #sns.pointplot(x=list(sse.keys()), y=list(sse.values()),color = "blue")
-   #plt.gca().collections[0].set_sizes([50])
-   #plt.plot([], [], linewidth=2)
-   #plt.show()
    st.pyplot(fig)
 #The Optimal K number of clusters --------------------------------
-def optimal_K(data): 
-   sse = k_Means(data,"k_means")
-   k=  KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
-   return k.elbow
+def optimal_K(data,method): 
+   sse = elbow(data,method)
+   if not sse:
+       return None
+   k = KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
+   return k.knee
+   #k=  KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
+   #return k.elbow
 
 #Application of the K means algorithm-----------------------------
 def perform_kmeans(data, k):
@@ -76,18 +82,19 @@ def perform_kmeans(data, k):
     labels = kmeans.labels_
     centroids = kmeans.cluster_centers_
     return labels, centroids
-#K means plot-----------------------------------------------------
-def plot_kmeans(df):
-   k = optimal_K(df)
-   labels, centroids = perform_kmeans(df,k)
+#K means scatter plot-----------------------------------------------------
+def plot_kmeans(df,method):
+   k = optimal_K(df,method)
+   if method == "K-Means" :
+     labels, centroids = perform_kmeans(df,k)
    fig, ax = plt.subplots()
    sns.scatterplot(x=df[:, 0], y=df[:, 1], c=labels, ax=ax)
    sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], marker='x', label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
    st.pyplot(fig)
 # Intraclasse calcul --------------------------------------------
-def calculate_intracluster_distance(data, metric='euclidean'):
-    k = optimal_K(data)
+def calculate_intracluster_distance(data,method, metric='euclidean'):
+    k = optimal_K(data,method)
     kmeans = KMeans(n_clusters=k)
     kmeans.fit(data)
     intra_cluster_distances = np.zeros(k)
@@ -100,11 +107,21 @@ def calculate_intracluster_distance(data, metric='euclidean'):
     return intra_cluster_distances.sum()
 
 # Interclasse calcul --------------------------------------------
-def calculate_intercluster_distance(data, metric='euclidean'):
-    kmeans = KMeans(n_clusters=optimal_K(data))
+def calculate_intercluster_distance(data,method,metric='euclidean'):
+    kmeans = KMeans(n_clusters=optimal_K(data,method))
     kmeans.fit(data)
     centroids = kmeans.cluster_centers_
     return pairwise_distances(centroids).sum()
+
+# Agnes test ----------------------------------------------------
+def Agnes_dendogram(data):
+   # Compute the linkage matrix
+   dendrogram = sch.dendrogram(sch.linkage(data, method='ward'))
+   fig, ax = plt.subplots(figsize=(10, 5))
+   plt.title('Dendrogram')
+   plt.xlabel('Cluster Size')
+   plt.ylabel('Distance')
+   st.pyplot(fig)
 
 
          
@@ -154,6 +171,7 @@ background-size: cover;
 </style>
 '''
 # Add the custom CSS to the page
+st.set_option('deprecation.showPyplotGlobalUse', False)
 st.markdown(page_bg_img, unsafe_allow_html=True)
 # Add some content to the page
 st.title('Clustering Test Application \n')
@@ -166,20 +184,23 @@ if dataset is not None:
   st.write("Pre-Processing phase :")
   df = preprocessing(dataset)
   st.write(df)
-  if radio == "K-Means" :
-     st.write("K-Means :")
-     # Call the function to plot the SSE curve
-     plot_elbow(df)
-     # Display the K value 
-     st.write("The optimal K is : ",optimal_K(df))
-     plot_kmeans(df)
-     #Display intraclass and interclass values 
-     st.write(" Interclasse :", calculate_intercluster_distance(df))
-     st.write(" Intraclasse :", calculate_intracluster_distance(df))
-  #elif radio == "K-Medoids":
-  #elif radio == "Agnes":
-  #elif radio == "Diana":
-  
+  #st.write(radio)
+  if radio != "": #K-Means
+    #print("inside k means ")
+    st.write(radio,":")
+    plot_elbow(df,radio) # Call the function to plot the SSE curve
+    st.write("The optimal K is : ",optimal_K(df,radio)) # Display the K value 
+    plot_kmeans(df,radio)
+    if radio == "Agnes" :
+       print("inside agnes")
+       #Agnes_dendogram(df)
+    #Display intraclass and interclass values 
+    st.write(" Interclasse :", calculate_intercluster_distance(df,radio))
+    st.write(" Intraclasse :", calculate_intracluster_distance(df,radio))
+    #elif radio == "K-Medoids":
+    #elif radio == "Agnes":
+    #elif radio == "Diana":
+    
 
 
   
