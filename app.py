@@ -13,6 +13,9 @@ from sklearn.metrics import pairwise_distances
 from sklearn.cluster import AgglomerativeClustering
 import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import pdist
+from scipy.spatial.distance import squareform
+from scipy.cluster.hierarchy import linkage, dendrogram
+#from pyclustering.cluster.diana import diana
 
 #Pre-processing ----------------------------------------------------
 def preprocessing(data):
@@ -95,7 +98,7 @@ def plot_kmeans(df,method):
    if method == "K-Means" :
      labels, centroids = perform_kmeans(df,k)
    fig, ax = plt.subplots(figsize=(10, 5))
-   sns.scatterplot(x=df.iloc[:, 0], y=df.iloc[:, 1], c=labels, ax=ax)
+   sns.scatterplot(x=df.iloc[:, 1], y=df.iloc[:, 2], c=labels, ax=ax)
    sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], marker='x', label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
    st.pyplot(fig)
@@ -174,6 +177,25 @@ def calculate_interclass_distanceagnes(data, distance_metric='euclidean'):
     interclass_distance = np.max(interclass_distances)
     return interclass_distance
 
+# dendogram diana----------------------------------------
+def diana_dendrogram(data):
+    # Calculate the dissimilarity matrix
+    dissimilarity_matrix = squareform(pdist(data))
+
+    # Perform hierarchical clustering
+    linkage_matrix = linkage(dissimilarity_matrix, method='ward')
+
+    # Plot the dendrogram
+    
+
+    # Show the plot
+    fig = plt.figure(figsize=(30,20))
+    dendrogram(linkage_matrix)
+    plt.xlabel('Data points')
+    plt.ylabel('Dissimilarity')
+    plt.title('DIANA Dendrogram')
+    st.pyplot(fig)
+
 #sideBar---------------------------------------------------------
 
 with st.sidebar:
@@ -245,6 +267,9 @@ if dataset is not None:
        Agnes_dendogram(df)
        st.write("interclasse :",calculate_interclass_distanceagnes(df))
        st.write("intraclasse :",calculate_intraclass_distanceagnes(df))
+  elif radio == "Diana" :
+       st.write("Dendogram Diana")
+       diana_dendrogram(df)
 
     #elif radio == "K-Medoids":
     #elif radio == "Agnes":
