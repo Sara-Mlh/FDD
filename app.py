@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
+#pip install scikit-learn-extra
+from sklearn_extra.cluster import KMedoids
 from kneed import KneeLocator
 from sklearn.metrics import pairwise_distances
 from sklearn.cluster import AgglomerativeClustering
@@ -16,6 +18,7 @@ from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 #from pyclustering.cluster.diana import diana
+from sklearn.decomposition import PCA
 
 #Pre-processing ----------------------------------------------------
 def preprocessing(data):
@@ -39,7 +42,7 @@ def preprocessing(data):
     return newdata
 
 #Elbow method implementation ---------------------------------------------------------
-def elbow(data,method): #data after pre-processing
+def elbow(data): #data after pre-processing
    kmeans_kwargs = {
       "init":"k-means++",
       "n_init": 10 ,
@@ -50,24 +53,23 @@ def elbow(data,method): #data after pre-processing
    sse = {}
    model = None
    for k in range(1,11):
-      if method == "K-Means" : 
          model = KMeans(n_clusters=k,**kmeans_kwargs) #second prtmr  only random state =1
          model.fit(data)
-      elif method == "Agnes":
-         dist_matrix = pdist(data, metric='euclidean')
-         model= AgglomerativeClustering(n_clusters=k)
-         try:
-           model.fit(dist_matrix.reshape(-1, 1))
-         except MemoryError:
-                print("MemoryError occurred while fitting AgglomerativeClustering model for k =", k)
-                continue
-      if model is not None:
-        sse[k] = model.inertia_
+      #elif method == "Agnes":
+         #dist_matrix = pdist(data, metric='euclidean')
+         #model= AgglomerativeClustering(n_clusters=k)
+         #try:
+           #model.fit(dist_matrix.reshape(-1, 1))
+         #except MemoryError:
+             #   print("MemoryError occurred while fitting AgglomerativeClustering model for k =", k)
+              #  continuess
+         if model is not None:
+           sse[k] = model.inertia_
    return sse 
 
 #Elbow_Method plot : SSE Curve-----------------------------------------
-def plot_elbow(data,method):
-   sse = elbow(data,method)
+def plot_elbow(data):
+   sse = elbow(data)
    plt.style.use("fivethirtyeight")
    fig = plt.figure(figsize=(10, 5))
    plt.plot(list(sse.keys()),list(sse.values()), 'bx-',linewidth=1.5,color='green')
@@ -76,8 +78,8 @@ def plot_elbow(data,method):
    plt.ylabel("SSE")
    st.pyplot(fig)
 #The Optimal K number of clusters --------------------------------
-def optimal_K(data,method): 
-   sse = elbow(data,method)
+def optimal_K(data): 
+   sse = elbow(data)
    if not sse:
        return None
    k = KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
@@ -93,18 +95,20 @@ def perform_kmeans(data, k):
     centroids = kmeans.cluster_centers_
     return labels, centroids
 #K means scatter plot-----------------------------------------------------
-def plot_kmeans(df,method):
-   k = optimal_K(df,method)
-   if method == "K-Means" :
-     labels, centroids = perform_kmeans(df,k)
+def plot_kmeans(df):
+   k = optimal_K(df)
+   
+   labels, centroids = perform_kmeans(df,k)
    fig, ax = plt.subplots(figsize=(10, 5))
-   sns.scatterplot(x=df.iloc[:, 1], y=df.iloc[:, 2], c=labels, ax=ax)
+   pca = PCA(n_components=2)
+   dfpca = pca.fit_transform(df)
+   sns.scatterplot(x=dfpca[:, 0], y=dfpca[:, 1], c=labels, ax=ax)
    sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], marker='x', label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
    st.pyplot(fig)
 # Intraclasse calcul --------------------------------------------
-def calculate_intracluster_distance(data,method, metric='euclidean'):
-    k = optimal_K(data,method)
+def calculate_intracluster_distance_kmeans(data, metric='euclidean'):
+    k = optimal_K(data)
     kmeans = KMeans(n_clusters=k)
     kmeans.fit(data)
     intra_cluster_distances = np.zeros(k)
@@ -117,8 +121,8 @@ def calculate_intracluster_distance(data,method, metric='euclidean'):
     return intra_cluster_distances.sum()
 
 # Interclasse calcul --------------------------------------------
-def calculate_intercluster_distance(data,method,metric='euclidean'):
-    kmeans = KMeans(n_clusters=optimal_K(data,method))
+def calculate_intercluster_distance_kmeans(data,metric='euclidean'):
+    kmeans = KMeans(n_clusters=optimal_K(data))
     kmeans.fit(data)
     centroids = kmeans.cluster_centers_
     return pairwise_distances(centroids).sum()
@@ -195,7 +199,51 @@ def diana_dendrogram(data):
     plt.ylabel('Dissimilarity')
     plt.title('DIANA Dendrogram')
     st.pyplot(fig)
+def kmedoid_clustering(data):
+    # Create k-medoids model
+    k = optimal_K(data)
+    kmedoids = KMedoids(n_clusters=k, random_state=0)
 
+    # Fit model to preprocessed data
+    kmedoids.fit(data)
+
+    # Get cluster labels and centers
+    cluster_labels = kmedoids.labels_
+    cluster_centers = kmedoids.cluster_centers_
+
+    # Plot clusters
+    fig, ax = plt.subplots(figsize=(8, 8))
+    #colors = plt.cm.tab20(np.linspace(0, 1, k))
+    for i in range(k):
+        cluster_data = data[cluster_labels == i]
+        ax.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], label=f'Cluster {i+1}')
+        #ax.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], c =cluster_labels,cmap ='viridis' ) fouad ves
+        ax.scatter(cluster_centers[i][0], cluster_centers[i][1], marker='x', s=200)
+    ax.set_title(f'K-medoids Clustering with k={k}')
+    ax.legend()
+    st.pyplot(fig)
+
+def intra_class_distance_kmedoids(data):
+    kmedoids = KMedoids(n_clusters=optimal_K(data), metric='euclidean').fit(data)
+    labels = kmedoids.labels_
+    centers = kmedoids.cluster_centers_
+    distances = []
+    for i in range(len(centers)):
+        cluster_data = data[labels == i]
+        center = centers[i]
+        dist = np.sum(np.square(cluster_data - center))
+        distances.append(dist)
+    return np.sum(distances)
+
+def inter_class_distance_kmedoids(data):
+    kmedoids = KMedoids(n_clusters=optimal_K(data), metric='euclidean').fit(data)
+    centers = kmedoids.cluster_centers_
+    distances = []
+    for i in range(len(centers)):
+        for j in range(i + 1, len(centers)):
+            dist = np.sum(np.square(centers[i] - centers[j]))
+            distances.append(dist)
+    return np.sum(distances)
 #sideBar---------------------------------------------------------
 
 with st.sidebar:
@@ -257,12 +305,12 @@ if dataset is not None:
   if radio == "K-Means": #K-Means
     #print("inside k means ")
     st.write(radio,":")
-    plot_elbow(df,radio) # Call the function to plot the SSE curve
-    st.write("The optimal K is : ",optimal_K(df,radio)) # Display the K value 
-    plot_kmeans(df,radio)    
+    plot_elbow(df) # Call the function to plot the SSE curve
+    st.write("The optimal K is : ",optimal_K(df)) # Display the K value 
+    plot_kmeans(df)    
     #Display intraclass and interclass values 
-    st.write(" Interclasse :", calculate_intercluster_distance(df,radio))
-    st.write(" Intraclasse :", calculate_intracluster_distance(df,radio))
+    st.write(" Interclasse :", calculate_intercluster_distance_kmeans(df))
+    st.write(" Intraclasse :", calculate_intracluster_distance_kmeans(df))
   elif radio == "Agnes" :
        Agnes_dendogram(df)
        st.write("interclasse :",calculate_interclass_distanceagnes(df))
@@ -270,6 +318,11 @@ if dataset is not None:
   elif radio == "Diana" :
        st.write("Dendogram Diana")
        diana_dendrogram(df)
+  elif radio == "K-Medoids":
+      kmedoid_clustering(df)
+      st.write("interclasse :",inter_class_distance_kmedoids(df))
+      st.write("intraclasse :",intra_class_distance_kmedoids(df))
+
 
     #elif radio == "K-Medoids":
     #elif radio == "Agnes":
