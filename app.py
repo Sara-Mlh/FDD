@@ -14,7 +14,6 @@ from sklearn.cluster import AgglomerativeClustering
 import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import pdist
 
-
 #Pre-processing ----------------------------------------------------
 def preprocessing(data):
     #Nan values
@@ -30,11 +29,11 @@ def preprocessing(data):
         data[col] = encoder.fit_transform(data[col])
     #standarisation 
     scaler= StandardScaler()
-    data = scaler.fit_transform(data)
+    dataa =scaler.fit_transform(data)
+    newdata = pd.DataFrame(dataa,columns=data.columns)
 
-    
 
-    return data
+    return newdata
 
 #Elbow method implementation ---------------------------------------------------------
 def elbow(data,method): #data after pre-processing
@@ -96,7 +95,7 @@ def plot_kmeans(df,method):
    if method == "K-Means" :
      labels, centroids = perform_kmeans(df,k)
    fig, ax = plt.subplots(figsize=(10, 5))
-   sns.scatterplot(x=df[:, 0], y=df[:, 1], c=labels, ax=ax)
+   sns.scatterplot(x=df.iloc[:, 0], y=df.iloc[:, 1], c=labels, ax=ax)
    sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], marker='x', label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
    st.pyplot(fig)
@@ -120,7 +119,6 @@ def calculate_intercluster_distance(data,method,metric='euclidean'):
     kmeans.fit(data)
     centroids = kmeans.cluster_centers_
     return pairwise_distances(centroids).sum()
-
 # Agnes test ----------------------------------------------------
 def Agnes_dendogram(data):
    # Compute the linkage matrix
@@ -131,10 +129,50 @@ def Agnes_dendogram(data):
    plt.ylabel('Distance')
    st.write("Agnes Dendogram :")
    st.pyplot(fig)
+#Agnes clustes --------------------------------------------
+def agglomerative_clustering_with_centroids(data):
+    num_clusters = optimal_K(data,method="K-Means")
+    clustering = AgglomerativeClustering(n_clusters=num_clusters)
+    cluster_labels = clustering.fit_predict(data)
 
+    clusters = []
+    for cluster_id in range(num_clusters):
+        cluster_points = data[cluster_labels == cluster_id]
+        cluster_centroid = np.mean(cluster_points, axis=0)
+        clusters.append({
+            'points': cluster_points,
+            'centroid': cluster_centroid
+        })
 
-         
-         
+    return clusters
+# intraclasse agnes -------------------------------------
+def calculate_intraclass_distanceagnes(data, distance_metric='euclidean'):
+    clusters = agglomerative_clustering_with_centroids(data)
+    num_clusters = len(clusters)
+    intraclass_distances = np.zeros(num_clusters)
+    
+    for i in range(num_clusters):
+        cluster_points = clusters[i]['points']
+        intraclass_distances[i] = np.mean(pairwise_distances(cluster_points, metric=distance_metric)) 
+    intraclass_distance = np.mean(intraclass_distances)
+    return intraclass_distance
+
+#interclasse agnes -------------------------------------
+def calculate_interclass_distanceagnes(data, distance_metric='euclidean'):
+    clusters = agglomerative_clustering_with_centroids(data)
+    num_clusters = len(clusters)
+    interclass_distances = np.zeros((num_clusters, num_clusters))
+    
+    for i in range(num_clusters):
+        for j in range(i + 1, num_clusters):
+            cluster_points_i = clusters[i]['points']
+            cluster_points_j = clusters[j]['points']
+            distances = pairwise_distances(cluster_points_i, cluster_points_j, metric=distance_metric)
+            interclass_distances[i, j] = np.max(distances)
+            interclass_distances[j, i] = np.max(distances)
+    
+    interclass_distance = np.max(interclass_distances)
+    return interclass_distance
 
 #sideBar---------------------------------------------------------
 
@@ -205,6 +243,8 @@ if dataset is not None:
     st.write(" Intraclasse :", calculate_intracluster_distance(df,radio))
   elif radio == "Agnes" :
        Agnes_dendogram(df)
+       st.write("interclasse :",calculate_interclass_distanceagnes(df))
+       st.write("intraclasse :",calculate_intraclass_distanceagnes(df))
 
     #elif radio == "K-Medoids":
     #elif radio == "Agnes":
