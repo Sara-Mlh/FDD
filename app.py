@@ -12,7 +12,7 @@ from kneed import KneeLocator
 from sklearn.metrics import pairwise_distances
 from sklearn.cluster import AgglomerativeClustering
 import scipy.cluster.hierarchy as sch
-
+from scipy.spatial.distance import pdist
 
 
 #Pre-processing ----------------------------------------------------
@@ -48,10 +48,16 @@ def elbow(data,method): #data after pre-processing
    for k in range(1,11):
       if method == "K-Means" : 
          model = KMeans(n_clusters=k,**kmeans_kwargs) #second prtmr  only random state =1
+         model.fit(data)
       elif method == "Agnes":
+         dist_matrix = pdist(data, metric='euclidean')
          model= AgglomerativeClustering(n_clusters=k)
+         try:
+           model.fit(dist_matrix.reshape(-1, 1))
+         except MemoryError:
+                print("MemoryError occurred while fitting AgglomerativeClustering model for k =", k)
+                continue
       if model is not None:
-        model.fit(data)
         sse[k] = model.inertia_
    return sse 
 
@@ -141,7 +147,7 @@ with st.sidebar:
     #Radio for clustering method
     radio = st.radio(
     "Choose a Clustering method",
-    ("","K-Means", "K-Medoids","Agnes","Diana"),
+    ("","K-Means", "K-Medoids","Agnes","Diana","DBScan"),
     index = 0,)
     #Submit buttom
     button_color = 'color:blue'  # red
