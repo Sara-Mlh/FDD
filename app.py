@@ -32,6 +32,8 @@ def preprocessing(data):
     scaler= StandardScaler()
     data = scaler.fit_transform(data)
 
+    
+
     return data
 
 #Elbow method implementation ---------------------------------------------------------
