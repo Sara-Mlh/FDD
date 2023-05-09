@@ -117,8 +117,9 @@ def calculate_intracluster_distance_kmeans(data, metric='euclidean'):
     for i in range(k):
         points_in_cluster = data[labels == i]
         centroid = centroids[i]
-        intra_cluster_distances[i] = np.mean(pairwise_distances(points_in_cluster, centroid.reshape(1, -1)))
-    return intra_cluster_distances.sum()
+        intra_cluster_distances[i] = np.mean(np.linalg.norm(points_in_cluster - centroid, axis=1)) #selon chatgpt it s more officent ms c le meme resultat
+        #intra_cluster_distances[i] = np.mean(pairwise_distances(points_in_cluster, centroid.reshape(1, -1)))
+    return intra_cluster_distances.mean()
 
 # Interclasse calcul --------------------------------------------
 def calculate_intercluster_distance_kmeans(data,metric='euclidean'):
