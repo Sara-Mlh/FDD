@@ -199,28 +199,34 @@ def diana_dendrogram(data):
     plt.ylabel('Dissimilarity')
     plt.title('DIANA Dendrogram')
     st.pyplot(fig)
-def kmedoid_clustering(data):
+def kmedoids_clustering(data):
     # Create k-medoids model
     k = optimal_K(data)
     kmedoids = KMedoids(n_clusters=k, random_state=0)
 
-    # Fit model to preprocessed data
+    # Fit model to data
     kmedoids.fit(data)
 
     # Get cluster labels and centers
     cluster_labels = kmedoids.labels_
     cluster_centers = kmedoids.cluster_centers_
 
+    # Apply PCA for visualization (assuming data is a DataFrame)
+    pca = PCA(n_components=2)
+    data_pca = pca.fit_transform(data)
+
     # Plot clusters
-    fig, ax = plt.subplots(figsize=(8, 8))
-    #colors = plt.cm.tab20(np.linspace(0, 1, k))
-    for i in range(k):
-        cluster_data = data[cluster_labels == i]
-        ax.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], label=f'Cluster {i+1}')
-        #ax.scatter(cluster_data.iloc[:, 0], cluster_data.iloc[:, 1], c =cluster_labels,cmap ='viridis' ) fouad ves
-        ax.scatter(cluster_centers[i][0], cluster_centers[i][1], marker='x', s=200)
-    ax.set_title(f'K-medoids Clustering with k={k}')
-    ax.legend()
+    fig= plt.figure(figsize=(8, 8))
+    sns.scatterplot(x=data_pca[:, 0], y=data_pca[:, 1], c=cluster_labels)
+    sns.scatterplot(x=cluster_centers[:, 0], y=cluster_centers[:, 1], label="centroid", linewidths=7, color='r')
+    #for i in range(k):
+       # cluster_data = data_pca[cluster_labels == i]
+        #sns.scatterplot(x=cluster_data[:, 0], y=cluster_data[:, 1], label=f'Cluster {i+1}')
+        #sns.scatterplot(x=cluster_centers[:, 0], y=cluster_centers[:, 1], marker='x', label="centroid", linewidths=13, color='r')
+        #plt.scatter(cluster_centers[i, 0], cluster_centers[i, 1], marker='x', s=200)
+    plt.title(f'K-medoids Clustering with k={k}')
+    plt.legend()
+    plt.show()
     st.pyplot(fig)
 
 def intra_class_distance_kmedoids(data):
@@ -319,7 +325,7 @@ if dataset is not None:
        st.write("Dendogram Diana")
        diana_dendrogram(df)
   elif radio == "K-Medoids":
-      kmedoid_clustering(df)
+      kmedoids_clustering(df)
       st.write("interclasse :",inter_class_distance_kmedoids(df))
       st.write("intraclasse :",intra_class_distance_kmedoids(df))
 
