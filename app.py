@@ -231,26 +231,21 @@ def kmedoids_clustering(data):
     st.pyplot(fig)
 
 def intra_class_distance_kmedoids(data):
-    kmedoids = KMedoids(n_clusters=optimal_K(data), metric='euclidean').fit(data)
+    k = optimal_K(data)
+    kmedoids = KMedoids(n_clusters=k, metric='euclidean').fit(data)
     labels = kmedoids.labels_
-    centers = kmedoids.cluster_centers_
-    distances = []
-    for i in range(len(centers)):
-        cluster_data = data[labels == i]
-        center = centers[i]
-        dist = np.sum(np.square(cluster_data - center))
-        distances.append(dist)
-    return np.sum(distances)
+    medoids = kmedoids.cluster_centers_
+    intra_cluster_distances = np.zeros(k)
+    for i in range(k):
+        cluster_points = data[labels == i]
+        medoid = medoids[i]
+        intra_cluster_distances[i] = np.mean(pairwise_distances(cluster_points, [medoid], metric='euclidean'))
+    return intra_cluster_distances.mean()
 
 def inter_class_distance_kmedoids(data):
     kmedoids = KMedoids(n_clusters=optimal_K(data), metric='euclidean').fit(data)
     centers = kmedoids.cluster_centers_
-    distances = []
-    for i in range(len(centers)):
-        for j in range(i + 1, len(centers)):
-            dist = np.sum(np.square(centers[i] - centers[j]))
-            distances.append(dist)
-    return np.sum(distances)
+    return pairwise_distances(centers, metric='euclidean').sum()
 #sideBar---------------------------------------------------------
 
 with st.sidebar:
