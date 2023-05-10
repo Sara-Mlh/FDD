@@ -425,6 +425,15 @@ if dataset is not None:
       ApplyDBScan(df)
 
     
-
+plt.figure(figsize=(10,8))
+ind = np.arange(len(interg))  # the x locations for the groups
+width = 0.35
+plt.bar(ind, intrag, width, color='r')
+plt.bar(ind, interg, width, bottom=intrag, color='b')
+plt.ylabel('Scores')
+plt.title('Scores by méthode')
+plt.xticks(ind, ('K_menas', 'K_Medoids', 'AGNES', 'DIANA', 'DBScan'))
+plt.legend(labels=['intra', 'inter'])
+plt.show()
 
   
