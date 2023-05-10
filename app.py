@@ -11,7 +11,7 @@ from sklearn.cluster import KMeans
 #pip install scikit-learn-extra
 from sklearn_extra.cluster import KMedoids
 from kneed import KneeLocator
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import pairwise_distances , silhouette_score
 from sklearn.cluster import AgglomerativeClustering
 import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import pdist
@@ -19,6 +19,7 @@ from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
 #from pyclustering.cluster.diana import diana
 from sklearn.decomposition import PCA
+from sklearn.cluster import DBSCAN
 
 #Pre-processing ----------------------------------------------------
 def preprocessing(data):
@@ -139,7 +140,7 @@ def Agnes_dendogram(data):
    st.pyplot(fig)
 #Agnes clustes --------------------------------------------
 def agglomerative_clustering_with_centroids(data):
-    num_clusters = optimal_K(data,method="K-Means")
+    num_clusters = optimal_K(data)
     clustering = AgglomerativeClustering(n_clusters=num_clusters)
     cluster_labels = clustering.fit_predict(data)
 
@@ -186,13 +187,9 @@ def calculate_interclass_distanceagnes(data, distance_metric='euclidean'):
 def diana_dendrogram(data):
     # Calculate the dissimilarity matrix
     dissimilarity_matrix = squareform(pdist(data))
-
     # Perform hierarchical clustering
     linkage_matrix = linkage(dissimilarity_matrix, method='ward')
-
-    # Plot the dendrogram
-    
-
+    # Plot the dendrogram  
     # Show the plot
     fig = plt.figure(figsize=(30,20))
     dendrogram(linkage_matrix)
@@ -200,6 +197,55 @@ def diana_dendrogram(data):
     plt.ylabel('Dissimilarity')
     plt.title('DIANA Dendrogram')
     st.pyplot(fig)
+
+def diana_den(data):
+    # Calculate the dissimilarity matrix
+    dissimilarity_matrix = squareform(pdist(data))
+
+    # Perform DIANA algorithm to obtain the hierarchical clustering
+    clusters = [[i] for i in range(len(data))]
+    linkage_matrix = []
+
+    while len(clusters) > 1:
+        max_dissimilarity = -np.inf
+        split_cluster = None
+
+        for cluster in clusters:
+            cluster_dissimilarity = np.max(dissimilarity_matrix[cluster][:, cluster])
+            if cluster_dissimilarity > max_dissimilarity:
+                max_dissimilarity = cluster_dissimilarity
+                split_cluster = cluster
+
+        clusters.remove(split_cluster)
+
+        subcluster1 = []
+        subcluster2 = []
+
+        for point in split_cluster:
+            dissimilarity_sum = dissimilarity_matrix[point, split_cluster].sum()
+            if dissimilarity_sum < dissimilarity_matrix[point, subcluster1].sum():
+                subcluster1.append(point)
+            else:
+                subcluster2.append(point)
+
+        if len(subcluster1) > 0:
+            clusters.append(subcluster1)
+        if len(subcluster2) > 0:
+            clusters.append(subcluster2)
+
+        if len(subcluster1) > 0 and len(subcluster2) > 0:
+            linkage_matrix.append([len(clusters) - 1, clusters.index(subcluster1), max_dissimilarity, len(subcluster1) + len(subcluster2)])
+
+    # Plot the dendrogram
+    fig = plt.figure(figsize=(10, 6))
+    dendrogram(linkage_matrix)
+    plt.xlabel('Data points')
+    plt.ylabel('Dissimilarity')
+    plt.title('DIANA Dendrogram')
+
+    # Display the plot in the Streamlit app
+    st.pyplot(fig)
+
 def kmedoids_clustering(data):
     # Create k-medoids model
     k = optimal_K(data)
@@ -229,7 +275,7 @@ def kmedoids_clustering(data):
     plt.legend()
     plt.show()
     st.pyplot(fig)
-
+#Kmedoids -------------------------------------------------------------------
 def intra_class_distance_kmedoids(data):
     k = optimal_K(data)
     kmedoids = KMedoids(n_clusters=k, metric='euclidean').fit(data)
@@ -246,6 +292,51 @@ def inter_class_distance_kmedoids(data):
     kmedoids = KMedoids(n_clusters=optimal_K(data), metric='euclidean').fit(data)
     centers = kmedoids.cluster_centers_
     return pairwise_distances(centers, metric='euclidean').sum()
+# DBSCAN ---------------------------------------------------------------------
+def ApplyDBScan(data):
+
+    # Define values of minPts and epsilon to test
+    minPts_list = [5, 10, 15]
+    epsilon_list = [0.5, 1, 1.5]
+
+    # Initialize list to store the number of clusters obtained for each combination of minPts and epsilon
+    n_clusters_list = []
+
+    # Iterate over different values of minPts and epsilon
+    for minPts in minPts_list:
+        for epsilon in epsilon_list:
+
+            # Create an instance of DBSCAN with the current minPts and epsilon values
+            dbscan = DBSCAN(eps=epsilon, min_samples=minPts)
+
+            # Apply DBSCAN to the standardized data
+            y_pred = dbscan.fit_predict(data)
+
+            # Count the number of clusters
+            labels = np.unique(y_pred)
+            n_clusters = len(labels) - (1 if -1 in labels else 0)
+
+            # Append the number of clusters to the list
+            n_clusters_list.append(n_clusters)
+
+            # Print the number of clusters and noise points for the current minPts and epsilon values
+            n_noise = list(y_pred).count(-1)
+            print(f"Pour MinPts={minPts} et Epsilon={epsilon}, le nombre de clusters est de {n_clusters} et le nombre de points de bruit est de {n_noise}.")
+
+    # Reshape the list of cluster counts into a 2D array
+    n_clusters_array = np.array(n_clusters_list).reshape(len(minPts_list), len(epsilon_list))
+
+    # Plot the number of clusters as a function of minPts and epsilon
+    fig = plt.figure(figsize=(30,20))
+    plt.imshow(n_clusters_array, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.colorbar()
+    plt.xticks(np.arange(len(epsilon_list)), epsilon_list)
+    plt.yticks(np.arange(len(minPts_list)), minPts_list)
+    plt.xlabel('Epsilon')
+    plt.ylabel('MinPts')
+    plt.title('Nombre de clusters en fonction de MinPts et Epsilon')
+    plt.show()
+    st.pyplot(fig)
 #sideBar---------------------------------------------------------
 
 with st.sidebar:
@@ -313,17 +404,25 @@ if dataset is not None:
     #Display intraclass and interclass values 
     st.write(" Interclasse :", calculate_intercluster_distance_kmeans(df))
     st.write(" Intraclasse :", calculate_intracluster_distance_kmeans(df))
-  elif radio == "Agnes" :
+  elif radio == "Agnes" :  #AGNES
        Agnes_dendogram(df)
        st.write("interclasse :",calculate_interclass_distanceagnes(df))
        st.write("intraclasse :",calculate_intraclass_distanceagnes(df))
-  elif radio == "Diana" :
+  elif radio == "Diana" :  #DIANA
        st.write("Dendogram Diana")
        diana_dendrogram(df)
+       #st.write("Dendogram Diana 1 :")
+       #diana_den(df)
   elif radio == "K-Medoids":
       kmedoids_clustering(df)
       st.write("interclasse :",inter_class_distance_kmedoids(df))
       st.write("intraclasse :",intra_class_distance_kmedoids(df))
+  elif radio == "DBScan":
+      st.write("DBSCAN  :")
+      #eps_range = np.arange(0.5, 1.0, 1.5)
+      #min_samples_range = range(2, 10)
+      #dbscan_clustering(df, eps_range, min_samples_range)
+      ApplyDBScan(df)
 
 
     #elif radio == "K-Medoids":
