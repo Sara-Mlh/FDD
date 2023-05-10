@@ -424,10 +424,6 @@ if dataset is not None:
       #dbscan_clustering(df, eps_range, min_samples_range)
       ApplyDBScan(df)
 
-
-    #elif radio == "K-Medoids":
-    #elif radio == "Agnes":
-    #elif radio == "Diana":
     
 
 
