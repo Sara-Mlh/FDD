@@ -82,8 +82,6 @@ def optimal_K(data):
        return None
    k = KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
    return k.knee
-   #k=  KneeLocator(list(sse.keys()), list(sse.values()), curve="convex", direction="decreasing")
-   #return k.elbow
 
 #Application of the K means algorithm-----------------------------
 def perform_kmeans(data, k):
@@ -95,7 +93,6 @@ def perform_kmeans(data, k):
 #K means scatter plot-----------------------------------------------------
 def plot_kmeans(df):
    k = optimal_K(df)
-   
    labels, centroids = perform_kmeans(df,k)
    fig, ax = plt.subplots(figsize=(8, 5))
    pca = PCA(n_components=2)
@@ -104,7 +101,7 @@ def plot_kmeans(df):
    sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
    st.pyplot(fig)
-# Intraclasse calcul --------------------------------------------
+# Intraclasse calcul kmeans--------------------------------------------
 def calculate_intracluster_distance_kmeans(data, metric='euclidean'):
     k = optimal_K(data)
     kmeans = KMeans(n_clusters=k)
@@ -118,7 +115,7 @@ def calculate_intracluster_distance_kmeans(data, metric='euclidean'):
         intra_cluster_distances[i] = np.mean(np.linalg.norm(points_in_cluster - centroid, axis=1))
     return intra_cluster_distances.mean()
 
-# Interclasse calcul --------------------------------------------
+# Interclasse calcul kmeans --------------------------------------------
 def calculate_intercluster_distance_kmeans(data,metric='euclidean'):
     kmeans = KMeans(n_clusters=optimal_K(data))
     kmeans.fit(data)
@@ -192,35 +189,7 @@ def diana_dendrogram(data):
     plt.ylabel('Dissimilarity')
     plt.title('DIANA Dendrogram')
     st.pyplot(fig)
-#inter intra diana ----------------------------------------
-def calculate_intraclass_distanceadiana(data, distance_metric='euclidean'):
-    clusters = agglomerative_clustering_with_centroids(data)
-    num_clusters = len(clusters)
-    intraclass_distances = np.zeros(num_clusters)
-    
-    for i in range(num_clusters):
-        cluster_points = clusters[i]['points']
-        intraclass_distances[i] = np.mean(pairwise_distances(cluster_points, metric=distance_metric)) 
-        intraclass_distance = np.mean(intraclass_distances)
-    return intraclass_distance
-
-#interclasse agnes -------------------------------------
-def calculate_interclass_distancediana(data, distance_metric='euclidean'):
-    clusters = agglomerative_clustering_with_centroids(data)
-    num_clusters = len(clusters)
-    interclass_distances = np.zeros((num_clusters, num_clusters))
-    
-    for i in range(num_clusters):
-        for j in range(i + 1, num_clusters):
-            cluster_points_i = clusters[i]['points']
-            cluster_points_j = clusters[j]['points']
-            distances = pairwise_distances(cluster_points_i, cluster_points_j, metric=distance_metric)
-            interclass_distances[i, j] = np.max(distances)
-            interclass_distances[j, i] = np.max(distances)
-    
-    interclass_distance = np.max(interclass_distances)
-    return interclass_distance
-
+#K medoids----------------------------------------------------
 def kmedoids_clustering(data):
     # Create k-medoids model
     k = optimal_K(data)
