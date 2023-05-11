@@ -17,7 +17,6 @@ import scipy.cluster.hierarchy as sch
 from scipy.spatial.distance import pdist
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage, dendrogram
-#from pyclustering.cluster.diana import diana
 from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN
 
@@ -25,7 +24,13 @@ from sklearn.cluster import DBSCAN
 def preprocessing(data):
     #Nan values
     if(data.isna().sum().sum() !=0):
-         data.dropna(axis = 0 , inplace=True)
+       # Replace missing values with the mean
+        for col in data.columns:
+            if data[col].dtype != "object" and data[col].dtype != "category":
+                col_mean = data[col].mean()
+                data[col].fillna(col_mean, inplace=True)
+            else :
+                data.dropna(axis = 0 , inplace=True)
     #duplicated values 
     if(data.duplicated().sum()!=0):
          data.drop_duplicates(inplace=True)
@@ -54,16 +59,8 @@ def elbow(data): #data after pre-processing
    sse = {}
    model = None
    for k in range(1,11):
-         model = KMeans(n_clusters=k,**kmeans_kwargs) #second prtmr  only random state =1
+         model = KMeans(n_clusters=k,**kmeans_kwargs) 
          model.fit(data)
-      #elif method == "Agnes":
-         #dist_matrix = pdist(data, metric='euclidean')
-         #model= AgglomerativeClustering(n_clusters=k)
-         #try:
-           #model.fit(dist_matrix.reshape(-1, 1))
-         #except MemoryError:
-             #   print("MemoryError occurred while fitting AgglomerativeClustering model for k =", k)
-              #  continuess
          if model is not None:
            sse[k] = model.inertia_
    return sse 
@@ -100,11 +97,11 @@ def plot_kmeans(df):
    k = optimal_K(df)
    
    labels, centroids = perform_kmeans(df,k)
-   fig, ax = plt.subplots(figsize=(10, 5))
+   fig, ax = plt.subplots(figsize=(8, 5))
    pca = PCA(n_components=2)
    dfpca = pca.fit_transform(df)
    sns.scatterplot(x=dfpca[:, 0], y=dfpca[:, 1], c=labels, ax=ax)
-   sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], marker='x', label="centroid", linewidths=3, color='r', ax=ax)
+   sns.scatterplot(x=centroids[:, 0], y=centroids[:, 1], label="centroid", linewidths=3, color='r', ax=ax)
    plt.title('Clusters (k = {})'.format(k))
    st.pyplot(fig)
 # Intraclasse calcul --------------------------------------------
@@ -118,8 +115,7 @@ def calculate_intracluster_distance_kmeans(data, metric='euclidean'):
     for i in range(k):
         points_in_cluster = data[labels == i]
         centroid = centroids[i]
-        intra_cluster_distances[i] = np.mean(np.linalg.norm(points_in_cluster - centroid, axis=1)) #selon chatgpt it s more officent ms c le meme resultat
-        #intra_cluster_distances[i] = np.mean(pairwise_distances(points_in_cluster, centroid.reshape(1, -1)))
+        intra_cluster_distances[i] = np.mean(np.linalg.norm(points_in_cluster - centroid, axis=1))
     return intra_cluster_distances.mean()
 
 # Interclasse calcul --------------------------------------------
@@ -190,61 +186,40 @@ def diana_dendrogram(data):
     # Perform hierarchical clustering
     linkage_matrix = linkage(dissimilarity_matrix, method='ward')
     # Plot the dendrogram  
-    # Show the plot
     fig = plt.figure(figsize=(30,20))
     dendrogram(linkage_matrix)
     plt.xlabel('Data points')
     plt.ylabel('Dissimilarity')
     plt.title('DIANA Dendrogram')
     st.pyplot(fig)
+#inter intra diana ----------------------------------------
+def calculate_intraclass_distanceadiana(data, distance_metric='euclidean'):
+    clusters = agglomerative_clustering_with_centroids(data)
+    num_clusters = len(clusters)
+    intraclass_distances = np.zeros(num_clusters)
+    
+    for i in range(num_clusters):
+        cluster_points = clusters[i]['points']
+        intraclass_distances[i] = np.mean(pairwise_distances(cluster_points, metric=distance_metric)) 
+        intraclass_distance = np.mean(intraclass_distances)
+    return intraclass_distance
 
-def diana_den(data):
-    # Calculate the dissimilarity matrix
-    dissimilarity_matrix = squareform(pdist(data))
-
-    # Perform DIANA algorithm to obtain the hierarchical clustering
-    clusters = [[i] for i in range(len(data))]
-    linkage_matrix = []
-
-    while len(clusters) > 1:
-        max_dissimilarity = -np.inf
-        split_cluster = None
-
-        for cluster in clusters:
-            cluster_dissimilarity = np.max(dissimilarity_matrix[cluster][:, cluster])
-            if cluster_dissimilarity > max_dissimilarity:
-                max_dissimilarity = cluster_dissimilarity
-                split_cluster = cluster
-
-        clusters.remove(split_cluster)
-
-        subcluster1 = []
-        subcluster2 = []
-
-        for point in split_cluster:
-            dissimilarity_sum = dissimilarity_matrix[point, split_cluster].sum()
-            if dissimilarity_sum < dissimilarity_matrix[point, subcluster1].sum():
-                subcluster1.append(point)
-            else:
-                subcluster2.append(point)
-
-        if len(subcluster1) > 0:
-            clusters.append(subcluster1)
-        if len(subcluster2) > 0:
-            clusters.append(subcluster2)
-
-        if len(subcluster1) > 0 and len(subcluster2) > 0:
-            linkage_matrix.append([len(clusters) - 1, clusters.index(subcluster1), max_dissimilarity, len(subcluster1) + len(subcluster2)])
-
-    # Plot the dendrogram
-    fig = plt.figure(figsize=(10, 6))
-    dendrogram(linkage_matrix)
-    plt.xlabel('Data points')
-    plt.ylabel('Dissimilarity')
-    plt.title('DIANA Dendrogram')
-
-    # Display the plot in the Streamlit app
-    st.pyplot(fig)
+#interclasse agnes -------------------------------------
+def calculate_interclass_distancediana(data, distance_metric='euclidean'):
+    clusters = agglomerative_clustering_with_centroids(data)
+    num_clusters = len(clusters)
+    interclass_distances = np.zeros((num_clusters, num_clusters))
+    
+    for i in range(num_clusters):
+        for j in range(i + 1, num_clusters):
+            cluster_points_i = clusters[i]['points']
+            cluster_points_j = clusters[j]['points']
+            distances = pairwise_distances(cluster_points_i, cluster_points_j, metric=distance_metric)
+            interclass_distances[i, j] = np.max(distances)
+            interclass_distances[j, i] = np.max(distances)
+    
+    interclass_distance = np.max(interclass_distances)
+    return interclass_distance
 
 def kmedoids_clustering(data):
     # Create k-medoids model
@@ -263,14 +238,9 @@ def kmedoids_clustering(data):
     data_pca = pca.fit_transform(data)
 
     # Plot clusters
-    fig= plt.figure(figsize=(8, 8))
+    fig= plt.figure(figsize=(8, 5))
     sns.scatterplot(x=data_pca[:, 0], y=data_pca[:, 1], c=cluster_labels)
     sns.scatterplot(x=cluster_centers[:, 0], y=cluster_centers[:, 1], label="centroid", linewidths=7, color='r')
-    #for i in range(k):
-       # cluster_data = data_pca[cluster_labels == i]
-        #sns.scatterplot(x=cluster_data[:, 0], y=cluster_data[:, 1], label=f'Cluster {i+1}')
-        #sns.scatterplot(x=cluster_centers[:, 0], y=cluster_centers[:, 1], marker='x', label="centroid", linewidths=13, color='r')
-        #plt.scatter(cluster_centers[i, 0], cluster_centers[i, 1], marker='x', s=200)
     plt.title(f'K-medoids Clustering with k={k}')
     plt.legend()
     plt.show()
@@ -293,7 +263,7 @@ def inter_class_distance_kmedoids(data):
     centers = kmedoids.cluster_centers_
     return pairwise_distances(centers, metric='euclidean').sum()
 # DBSCAN ---------------------------------------------------------------------
-def ApplyDBScan(data):
+def DBScan(data):
 
     # Define values of minPts and epsilon to test
     minPts_list = [5, 10, 15]
@@ -337,6 +307,44 @@ def ApplyDBScan(data):
     plt.title('Nombre de clusters en fonction de MinPts et Epsilon')
     plt.show()
     st.pyplot(fig)
+
+# comparaison plot 
+def compare_intra_interclass(algorithms, intra_scores, inter_scores):
+    """
+    Compare intra and interclass differences between different algorithm methods and generate a bar plot.
+
+    Args:
+        algorithms (list): List of algorithm names.
+        intra_scores (list): List of intra-class scores for each algorithm.
+        inter_scores (list): List of inter-class scores for each algorithm.
+    """
+
+    # Set the width of the bars
+    bar_width = 0.35
+
+    # Set the positions of the bars on the x-axis
+    r1 = np.arange(len(intra_scores))
+    r2 = [x + bar_width for x in r1]
+
+    # Create the bar plot
+    fig, ax = plt.subplots()
+    ax.bar(r1, intra_scores, color='b', width=bar_width, edgecolor='white', label='Intra-class')
+    ax.bar(r2, inter_scores, color='g', width=bar_width, edgecolor='white', label='Inter-class')
+
+    # Add labels and title
+    ax.set_xlabel('Algorithm')
+    ax.set_ylabel('Score')
+    ax.set_title('Intra and Inter-class Differences')
+
+    # Add x-axis tick labels
+    ax.set_xticks([r + bar_width/2 for r in range(len(intra_scores))])
+    ax.set_xticklabels(algorithms)
+
+    # Add legend
+    ax.legend()
+
+    # Display the plot
+    st.pyplot(fig)
 #sideBar---------------------------------------------------------
 
 with st.sidebar:
@@ -344,21 +352,15 @@ with st.sidebar:
     uploded_file = st.file_uploader("Upload a file ",type="csv")
     #SelectBox for Dataset
     selectbox = st.selectbox(
-    "Select a dataSet :",
-    ("","Breast Cancer","Colic","Diabetes", "Drug200","hepatitis")
+    "OR Select a dataSet here :",
+    ("","Breast Cancer","Colic","Diabetes","hepatitis", "DNA Sequences")
     )
     #Radio for clustering method
     radio = st.radio(
     "Choose a Clustering method",
-    ("","K-Means", "K-Medoids","Agnes","Diana","DBScan"),
+    ("None","K-Means", "K-Medoids","Agnes","Diana","DBScan"),
     index = 0,)
-    #Submit buttom
-    button_color = 'color:blue'  # red
-    button_style = f'background-color: {button_color};'
-    submit = st.button("Start Test")
 
-
-    
 
 #display data---------------------------------------------------
 def display_dataset(uploded_file):
@@ -366,7 +368,7 @@ def display_dataset(uploded_file):
      df = pd.read_csv(uploded_file)
      return df
    else :
-     st.markdown("<h5 style='tedft-align: left ; margin-top:5em ; color: red;'>No dataset selected</h1>", unsafe_allow_html=True)
+     st.markdown("<h5 style='tedft-align: left ; margin-top:5em ; color: red;'>Selection of a dataset</h1>", unsafe_allow_html=True)
      return None
 
 #Page------------------------------------------------------------
@@ -386,8 +388,20 @@ st.markdown(page_bg_img, unsafe_allow_html=True)
 # Add some content to the page
 st.title('Clustering Test Application \n')
 st.header('Welcome , ')
-
+#upload a file
 dataset = display_dataset(uploded_file)
+if dataset is None:
+    if selectbox !="" :
+     if selectbox == "Diabetes":
+        dataset = pd.read_csv("C:/Users/ASUS/Desktop/datasets/diabetes.csv")
+     elif selectbox=="Breast Cancer": 
+        dataset = pd.read_csv("C:/Users/ASUS/Desktop/datasets/cancer.csv") 
+     elif selectbox=="Colic":  
+        dataset = pd.read_csv("C:/Users/ASUS/Desktop/datasets/colic.csv")
+     elif selectbox=="hepatitis":
+        dataset = pd.read_csv("C:/Users/ASUS/Desktop/datasets/HepatitisCdata.csv")
+     elif selectbox=="DNA Sequences":
+        dataset = pd.read_csv("C:/Users/ASUS/Desktop/datasets/dna.txt")
 if dataset is not None:
   st.write(dataset)
   st.write(dataset.dtypes)
@@ -411,29 +425,23 @@ if dataset is not None:
   elif radio == "Diana" :  #DIANA
        st.write("Dendogram Diana")
        diana_dendrogram(df)
-       #st.write("Dendogram Diana 1 :")
-       #diana_den(df)
+       #st.write("interclasse :",calculate_interclass_distancediana(df))
+       #st.write("intraclasse :",calculate_intraclass_distanceadiana(df))
   elif radio == "K-Medoids":
       kmedoids_clustering(df)
       st.write("interclasse :",inter_class_distance_kmedoids(df))
       st.write("intraclasse :",intra_class_distance_kmedoids(df))
   elif radio == "DBScan":
       st.write("DBSCAN  :")
-      #eps_range = np.arange(0.5, 1.0, 1.5)
-      #min_samples_range = range(2, 10)
-      #dbscan_clustering(df, eps_range, min_samples_range)
-      ApplyDBScan(df)
+      DBScan(df)
+  if st.sidebar.button("Comparer les methodes"):
+      st.write("comparaison")
+         # Calculate intra-class and inter-class scores for each algorithm
+      algorithms = ['K-Means', 'K-Medoids','Agnes','DIANA']
+      intra_scores = [2.44, 2.50, 3.3514,4.59]
+      inter_scores = [44.41, 34.80, 12.39,11.39489]
 
-    
-plt.figure(figsize=(10,8))
-ind = np.arange(len(interg))  # the x locations for the groups
-width = 0.35
-plt.bar(ind, intrag, width, color='r')
-plt.bar(ind, interg, width, bottom=intrag, color='b')
-plt.ylabel('Scores')
-plt.title('Scores by méthode')
-plt.xticks(ind, ('K_menas', 'K_Medoids', 'AGNES', 'DIANA', 'DBScan'))
-plt.legend(labels=['intra', 'inter'])
-plt.show()
+      # Compare and plot the intra and inter-class differences
+      compare_intra_interclass(algorithms, intra_scores, inter_scores)
 
   
