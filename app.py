@@ -43,8 +43,6 @@ def preprocessing(data):
     scaler= StandardScaler()
     dataa =scaler.fit_transform(data)
     newdata = pd.DataFrame(dataa,columns=data.columns)
-
-
     return newdata
 
 #Elbow method implementation ---------------------------------------------------------
@@ -55,7 +53,6 @@ def elbow(data): #data after pre-processing
       "max_iter" : 300,
       "random_state": 42,
    }
-
    sse = {}
    model = None
    for k in range(1,11):
@@ -194,18 +191,14 @@ def kmedoids_clustering(data):
     # Create k-medoids model
     k = optimal_K(data)
     kmedoids = KMedoids(n_clusters=k, random_state=0)
-
     # Fit model to data
     kmedoids.fit(data)
-
     # Get cluster labels and centers
     cluster_labels = kmedoids.labels_
     cluster_centers = kmedoids.cluster_centers_
-
     # Apply PCA for visualization (assuming data is a DataFrame)
     pca = PCA(n_components=2)
     data_pca = pca.fit_transform(data)
-
     # Plot clusters
     fig= plt.figure(figsize=(8, 5))
     sns.scatterplot(x=data_pca[:, 0], y=data_pca[:, 1], c=cluster_labels)
@@ -214,7 +207,7 @@ def kmedoids_clustering(data):
     plt.legend()
     plt.show()
     st.pyplot(fig)
-#Kmedoids -------------------------------------------------------------------
+#Kmedoids interclass intraclass-------------------------------------------------------------------
 def intra_class_distance_kmedoids(data):
     k = optimal_K(data)
     kmedoids = KMedoids(n_clusters=k, metric='euclidean').fit(data)
@@ -233,35 +226,26 @@ def inter_class_distance_kmedoids(data):
     return pairwise_distances(centers, metric='euclidean').sum()
 # DBSCAN ---------------------------------------------------------------------
 def DBScan(data):
-
     # Define values of minPts and epsilon to test
     minPts_list = [5, 10, 15]
     epsilon_list = [0.5, 1, 1.5]
-
     # Initialize list to store the number of clusters obtained for each combination of minPts and epsilon
     n_clusters_list = []
-
     # Iterate over different values of minPts and epsilon
     for minPts in minPts_list:
         for epsilon in epsilon_list:
-
             # Create an instance of DBSCAN with the current minPts and epsilon values
             dbscan = DBSCAN(eps=epsilon, min_samples=minPts)
-
             # Apply DBSCAN to the standardized data
             y_pred = dbscan.fit_predict(data)
-
-            # Count the number of clusters
+          # Count the number of clusters
             labels = np.unique(y_pred)
             n_clusters = len(labels) - (1 if -1 in labels else 0)
-
             # Append the number of clusters to the list
             n_clusters_list.append(n_clusters)
-
             # Print the number of clusters and noise points for the current minPts and epsilon values
             n_noise = list(y_pred).count(-1)
             print(f"Pour MinPts={minPts} et Epsilon={epsilon}, le nombre de clusters est de {n_clusters} et le nombre de points de bruit est de {n_noise}.")
-
     # Reshape the list of cluster counts into a 2D array
     n_clusters_array = np.array(n_clusters_list).reshape(len(minPts_list), len(epsilon_list))
 
@@ -299,19 +283,15 @@ def compare_intra_interclass(algorithms, intra_scores, inter_scores):
     fig, ax = plt.subplots()
     ax.bar(r1, intra_scores, color='b', width=bar_width, edgecolor='white', label='Intra-class')
     ax.bar(r2, inter_scores, color='g', width=bar_width, edgecolor='white', label='Inter-class')
-
     # Add labels and title
     ax.set_xlabel('Algorithm')
     ax.set_ylabel('Score')
     ax.set_title('Intra and Inter-class Differences')
-
     # Add x-axis tick labels
     ax.set_xticks([r + bar_width/2 for r in range(len(intra_scores))])
     ax.set_xticklabels(algorithms)
-
     # Add legend
     ax.legend()
-
     # Display the plot
     st.pyplot(fig)
 #sideBar---------------------------------------------------------
