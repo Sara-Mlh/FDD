@@ -393,4 +393,3 @@ if dataset is not None:
       # Compare and plot the intra and inter-class differences
       compare_intra_interclass(algorithms, intra_scores, inter_scores)
 
-  
